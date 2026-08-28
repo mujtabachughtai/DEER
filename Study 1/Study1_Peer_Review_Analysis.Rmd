@@ -1,0 +1,143 @@
+---
+title: "Study 1 Peer Review Analysis"
+author: "Muji Chughtai"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# Load in Required Packages and Data
+```{r}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+
+study1 <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study1_AnalysisData.csv")
+)
+Experience <- study1 %>%
+  filter(Type == "Experience")
+Expression <- study1 %>%
+  filter(Type == "Expression")
+```
+
+# Experience
+```{r}
+Experience %>%
+  ggplot(aes(x = factor(Relationship, levels = c("Romantic Partner", "Close Friend", "Classmate/Colleague", "Stranger")),
+             fill = factor(Emotion, levels = c("Respect", "Guilt", "Pride", "Anger")),
+             y = Frequency)) +
+    scale_fill_manual(values = c("Respect" = "#00356B", "Guilt" = "#A11FA2", 
+                               "Pride" = "#F2A007", "Anger" = "#D32F2F")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Frequency",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(0, 3.5)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+
+```
+
+```{r}
+model1 <- glm(Frequency ~ Relationship_Type*Emotion,
+              data = subset(Experience,Relationship != "Stranger"))
+summary(model1)
+
+model1.emm <- emmeans(model1, ~ Relationship_Type*Emotion)
+pairs(model1.emm)
+confint(pairs(model1.emm))
+eff_size(model1.emm, sigma = sigma(model1), edf = df.residual(model1))
+```
+
+# Expression
+```{r}
+Expression %>%
+  ggplot(aes(x = factor(Relationship, levels = c("Romantic Partner", "Close Friend", "Classmate/Colleague", "Stranger")),
+             fill = factor(Emotion, levels = c("Respect", "Guilt", "Pride", "Anger")),
+             y = Frequency)) +
+    scale_fill_manual(values = c("Respect" = "#00356B", "Guilt" = "#A11FA2", 
+                               "Pride" = "#F2A007", "Anger" = "#D32F2F")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Frequency",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(0, 3.5)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+```
+
+```{r}
+model2 <- glm(Frequency ~ Relationship_Type*Emotion,
+              data = subset(Expression,Relationship != "Stranger"))
+summary(model2)
+
+model2.emm <- emmeans(model2, ~ Relationship_Type*Emotion)
+pairs(model2.emm)
+confint(pairs(model2.emm))
+eff_size(model2.emm, sigma = sigma(model2), edf = df.residual(model2))
+```
+
+# Connection
+```{r}
+Expression %>%
+  ggplot(aes(x = factor(Relationship, levels = c("Romantic Partner", "Close Friend", "Classmate/Colleague", "Stranger")),
+             fill = factor(Emotion, levels = c("Respect", "Guilt", "Pride", "Anger")),
+             y = Connection)) +
+    scale_fill_manual(values = c("Respect" = "#00356B", "Guilt" = "#A11FA2", 
+                               "Pride" = "#F2A007", "Anger" = "#D32F2F")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Feeelings of Connection",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(-2, 2)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+```
+
+```{r}
+model3 <- glm(Connection ~ Relationship_Type*Emotion,
+              data = subset(Expression,Relationship != "Stranger"))
+summary(model3)
+
+model3.emm <- emmeans(model3, ~ Relationship_Type*Emotion)
+pairs(model3.emm)
+confint(pairs(model3.emm))
+eff_size(model3.emm, sigma = sigma(model3), edf = df.residual(model3))
+```

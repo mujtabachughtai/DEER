@@ -1,0 +1,372 @@
+---
+title: "Study 2 Primary Analyses"
+author: "Muji Chughtai"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# Load in Required Packages and Data
+```{r}
+library(tidyverse)
+library(here)
+library(svglite)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(reghelper)
+library(lsr)
+library(apaTables)
+
+study2 <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study2_AnalysisData.csv")
+)
+Experience <- study2 %>%
+  filter(Type == "Experience")
+Expression <- study2 %>%
+  filter(Type == "Expression")
+```
+
+# H1a - Perceieved Experience will Differ by Emotion
+```{r}
+model1a <- glm(Frequency ~ Emotion, data = Experience)
+summary(model1a)
+```
+
+```{r}
+model1a.emm <- emmeans(model1a, ~ Emotion)
+pairs(model1a.emm)
+confint(pairs(model1a.emm))
+eff_size(model1a.emm, sigma = sigma(model1a), edf = df.residual(model1a))
+```
+
+# H1b - Perceieved Expression will Differ by Emotion
+```{r}
+model1b <- glm(Frequency ~ Emotion, data = Expression)
+summary(model1b)
+```
+
+```{r}
+model1b.emm <- emmeans(model1b, ~ Emotion)
+pairs(model1b.emm)
+confint(pairs(model1b.emm))
+eff_size(model1b.emm, sigma = sigma(model1b), edf = df.residual(model1b))
+```
+
+# H2 - Connection when Perceving will Differ by Emotion
+```{r}
+model2 <- glm(Connection ~ Emotion, data = Expression)
+summary(model2)
+```
+
+```{r}
+model2.emm <- emmeans(model2, ~ Emotion)
+pairs(model2.emm)
+confint(pairs(model2.emm))
+eff_size(model2.emm, sigma = sigma(model2), edf = df.residual(model2))
+```
+
+# H3 - Guilt will be Connecting in Communal but Disconnecting in Transactional
+```{r}
+Expression %>%
+  filter(Emotion == "Guilt") %>%
+  group_by(Relationship_Type) %>%
+  summarize(
+    t_test = list(t.test(Connection, mu = 0)),
+    df = t_test[[1]]$parameter,
+    estimate = t_test[[1]]$estimate,
+    statistic = t_test[[1]]$statistic,
+    p_value = t_test[[1]]$p.value,
+    conf_int_low = t_test[[1]]$conf.int[1],
+    conf_int_high = t_test[[1]]$conf.int[2],
+    effect_size = as.numeric(cohensD(Connection, mu = 0))
+  ) %>%
+  ungroup()
+```
+
+# H4 - The differences in feelings of connection associated with expressing versus perceiving emotions will be larger for disengaging (versus engaging) emotions
+```{r}
+study1_comp <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study1_ComparisonData.csv")
+)
+study2_comp <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study2_ComparisonData.csv")
+)
+
+study1_comp <- study1_comp %>%
+  filter(Type == "Expression")
+
+study2_comp <- study2_comp %>%
+  filter(Type == "Expression")
+
+comp_data <- rbind(study1_comp, study2_comp)
+```
+
+```{r}
+model4 <- glm(Connection ~ PE*Orientation, data = comp_data)
+summary(model4)
+confint(model4)
+```
+
+```{r}
+model4.emm <- emmeans(model4, ~ PE*Orientation)
+pairs(model4.emm)
+confint(pairs(model4.emm))
+eff_size(model4.emm, sigma = sigma(model4), edf = df.residual(model4))
+```
+
+# H5 - Connection will be Positively Associated with Perception, Especially for Communal Relationships
+```{r}
+model5a <- glm(Frequency ~ Connection, data = Expression)
+summary(model5a)
+confint(model5a)
+```
+
+```{r}
+model5b <- glm(Frequency ~ Relationship_Type*Connection, data = Expression)
+summary(model5b)
+confint(model5b)
+simple_slopes(model5b)
+
+# Define the estimates and standard errors for the two simple slopes (Communal and Transactional)
+communal_slope <- 0.4225
+communal_se <- 0.0143
+
+transactional_slope <- 0.3416
+transactional_se <- 0.0165
+
+# Degrees of freedom (df) based on model output (5064)
+df <- 5064
+
+# Calculate the critical t-value for 95% CI
+alpha <- 0.05
+t_value <- qt(1 - alpha / 2, df)
+
+# Manually calculate the confidence intervals
+communal_ci_lower <- communal_slope - t_value * communal_se
+communal_ci_upper <- communal_slope + t_value * communal_se
+
+transactional_ci_lower <- transactional_slope - t_value * transactional_se
+transactional_ci_upper <- transactional_slope + t_value * transactional_se
+
+# Display results
+cat("Communal Slope CI: [", communal_ci_lower, ",", communal_ci_upper, "]\n")
+cat("Transactional Slope CI: [", transactional_ci_lower, ",", transactional_ci_upper, "]\n")
+```
+
+# Individual Emotions
+
+## Experience
+```{r}
+model6 <- glm(Frequency ~ Emotion, data = Experience)
+summary(model6)
+```
+
+```{r}
+model6.emm <- emmeans(model6, ~ Emotion)
+pairs(model6.emm)
+confint(pairs(model6.emm))
+eff_size(model6.emm, sigma = sigma(model6), edf = df.residual(model6))
+```
+
+## Expression
+```{r}
+model7 <- glm(Frequency ~ Emotion, data = Expression)
+summary(model7)
+```
+
+```{r}
+model7.emm <- emmeans(model7, ~ Emotion)
+pairs(model7.emm)
+confint(pairs(model7.emm))
+eff_size(model7.emm, sigma = sigma(model7), edf = df.residual(model7))
+```
+
+## Connection
+```{r}
+model8 <- glm(Connection ~ Emotion, data = Expression)
+summary(model8)
+```
+
+```{r}
+model8.emm <- emmeans(model8, ~ Emotion)
+pairs(model8.emm)
+confint(pairs(model8.emm))
+eff_size(model8.emm, sigma = sigma(model8), edf = df.residual(model8))
+```
+
+# Individual Emotions and Relationship Types
+
+## Experience
+```{r}
+x <- Experience %>%
+  ggplot(aes(x = factor(Relationship_Type, levels = c("Communal", "Transactional")),
+             fill = factor(Emotion, levels = c("Respect", "Guilt", "Pride", "Anger")),
+             y = Frequency)) +
+    scale_fill_manual(values = c("Respect" = "#00356B", "Guilt" = "#A11FA2", 
+                               "Pride" = "#F2A007", "Anger" = "#D32F2F")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Frequency",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(0, 3.5)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+
+ggsave(
+  here("Figures", "Study 2", "Study2_Experience.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+```{r}
+model9 <- glm(Frequency ~ Relationship_Type*Emotion, data = Experience)
+summary(model9)
+```
+
+```{r}
+model9.emm <- emmeans(model9, ~ Relationship_Type*Emotion)
+pairs(model9.emm)
+confint(pairs(model9.emm))
+eff_size(model9.emm, sigma = sigma(model9), edf = df.residual(model9))
+```
+
+## Expression
+```{r}
+x <- Expression %>%
+  ggplot(aes(x = factor(Relationship_Type, levels = c("Communal", "Transactional")),
+             fill = factor(Emotion, levels = c("Respect", "Guilt", "Pride", "Anger")),
+             y = Frequency)) +
+    scale_fill_manual(values = c("Respect" = "#00356B", "Guilt" = "#A11FA2", 
+                               "Pride" = "#F2A007", "Anger" = "#D32F2F")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Frequency",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(0, 3.5)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+
+ggsave(
+  here("Figures", "Study 2", "Study2_Expression.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+```{r}
+model10 <- glm(Frequency ~ Relationship_Type*Emotion, data = Expression)
+summary(model10)
+```
+
+```{r}
+model10.emm <- emmeans(model10, ~ Relationship_Type*Emotion)
+pairs(model10.emm)
+confint(pairs(model10.emm))
+eff_size(model10.emm, sigma = sigma(model10), edf = df.residual(model10))
+```
+
+## Connection
+```{r}
+x <- Expression %>%
+  ggplot(aes(x = factor(Relationship_Type, levels = c("Communal", "Transactional")),
+             fill = factor(Emotion, levels = c("Respect", "Guilt", "Pride", "Anger")),
+             y = Connection)) +
+    scale_fill_manual(values = c("Respect" = "#00356B", "Guilt" = "#A11FA2", 
+                               "Pride" = "#F2A007", "Anger" = "#D32F2F")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Frequency",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(-2, 2)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+
+ggsave(
+  here("Figures", "Study 2", "Study2_Connection.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+```{r}
+model11 <- glm(Connection ~ Relationship_Type*Emotion, data = Expression)
+summary(model11)
+```
+
+```{r}
+model11.emm <- emmeans(model11, ~ Relationship_Type*Emotion)
+pairs(model11.emm)
+confint(pairs(model11.emm))
+eff_size(model11.emm, sigma = sigma(model11), edf = df.residual(model11))
+```
+
+# Full Descriptive Statistics
+```{r}
+# Experience
+Experience.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = Frequency,
+  data = Experience
+)
+
+# Expression
+Expression.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = Frequency,
+  data = Expression
+)
+
+# Connection
+Connection.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = Connection,
+  data = Expression
+)
+
+Experience.desc
+Expression.desc
+Connection.desc
+```

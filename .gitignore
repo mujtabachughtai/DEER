@@ -1,0 +1,26 @@
+# Excluded from the public repository
+
+Data/Raw Data/
+Manuscript Writing/
+Presentations and Abstracts/
+Receipts/
+*DataCleaning_Initial.R
+
+# Published article PDF (journal typeset version)
+Chughtai et al. - 2025 - Whether Emotions are Engaging or Disengaging Depends on Relationship Functions.pdf
+
+# SMB tombstones: deleted files the network share has not yet released.
+# These keep the ORIGINAL file's contents under a new hidden name, so a
+# name-based rule above will not catch them. Never commit these.
+.smbdelete*
+
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+
+# OS and Office temp files
+.DS_Store
+~$*

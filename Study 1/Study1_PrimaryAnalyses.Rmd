@@ -1,0 +1,313 @@
+---
+title: "Study 1 Primary Analyses"
+author: "Muji Chughtai"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# Load in Required Packages and Data
+```{r}
+library(tidyverse)
+library(here)
+library(svglite)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(reghelper)
+library(lsr)
+
+study1 <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study1_AnalysisData.csv")
+)
+Experience <- study1 %>%
+  filter(Type == "Experience")
+Expression <- study1 %>%
+  filter(Type == "Expression")
+```
+
+# Demographics
+
+## Race/Ethnicity
+```{r}
+individuals <- study1 %>%
+  distinct(PID, .keep_all = TRUE)
+
+individuals %>%
+  group_by(Ethnicity.simplified) %>%
+  summarise(
+    N = n(),
+    Proportion = N / nrow(individuals)) %>%
+    arrange(desc(N))
+```
+
+## Age
+```{r}
+individuals %>%
+  filter(!is.na(Age)) %>%
+  summarise(Min = min(Age),
+            Q1 = quantile(Age, 0.25),
+            Mean = mean(Age),
+            Median = median(Age),
+            Q3 = quantile(Age, 0.75),
+            Max = max(Age),
+            IQR = IQR(Age),
+            SD = sd(Age),
+            N = n())
+```
+
+## Sex
+```{r}
+individuals %>%
+  group_by(Sex) %>%
+  summarise(
+    N = n(),
+    Proportion = N / nrow(individuals)) %>%
+  arrange(desc(N))
+```
+
+# Experience
+
+## Distributions and Summary Statistics
+```{r}
+Experience %>%
+  filter(!is.na(Frequency)) %>%
+  summarise(Min = min(Frequency),
+            Q1 = quantile(Frequency, 0.25),
+            Mean = mean(Frequency),
+            Median = median(Frequency),
+            Q3 = quantile(Frequency, 0.75),
+            Max = max(Frequency),
+            IQR = IQR(Frequency),
+            SD = sd(Frequency),
+            N = n())
+```
+
+```{r}
+Experience %>%
+  ggplot(aes(x = Frequency)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Frequency of Experience", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Frequency ~ Relationship_Type*Emotion, data = Experience)
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Frequency of Experience",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+
+ggsave(
+  here("Figures", "Study 1", "Study1_Residuals_Experience.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Expression
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(!is.na(Frequency)) %>%
+  summarise(Min = min(Frequency),
+            Q1 = quantile(Frequency, 0.25),
+            Mean = mean(Frequency),
+            Median = median(Frequency),
+            Q3 = quantile(Frequency, 0.75),
+            Max = max(Frequency),
+            IQR = IQR(Frequency),
+            SD = sd(Frequency),
+            N = n())
+```
+
+```{r}
+Expression %>%
+  ggplot(aes(x = Frequency)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Frequency of Expression", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Frequency ~ Relationship_Type*Emotion,
+                  data = Expression)
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Frequency of Expression",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 1", "Study1_Residuals_Expression.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Connection
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(!is.na(Connection)) %>%
+  summarise(Min = min(Connection),
+            Q1 = quantile(Connection, 0.25),
+            Mean = mean(Connection),
+            Q3 = quantile(Connection, 0.75),
+            Max = max(Connection),
+            IQR = IQR(Connection),
+            SD = sd(Connection),
+            N = n())
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Connection ~ Relationship_Type*Emotion, data = Expression)
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Feelings of Connection when Expressing",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 1", "Study1_Residuals_Connection.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+```{r}
+Expression %>%
+  ggplot(aes(x = Connection)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Feelings of Connection when Expressing", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+# Checking Random Effects of Participant
+## Experience
+```{r}
+model <- lmer(Frequency ~ 1 + (1|PID), data = Experience)
+summary(model)
+
+ICC <- 0.04052 / (0.04052 + 1.37639);ICC
+```
+
+## Expression
+```{r}
+model <- lmer(Frequency ~ 1 + (1|PID), data = Expression)
+summary(model)
+
+ICC <- 0.0864 / (0.0864 + 1.3500);ICC
+```
+
+## Connection
+```{r}
+model <- lmer(Connection ~ 1 + (1|PID), data = Expression)
+summary(model)
+
+ICC <- 0.09599 / (0.09599 + 1.15015);ICC
+```
+
+# Testing Preregistered Primary Hypotheses
+
+## H1 - Engaging Emotions will be Experienced More in Communal vs. Transactional Relationships
+
+## H2 - In Communal Relationships, Engaging Emotions will be Experienced More than Disengaging Ones
+```{r}
+model1 <- glm(Frequency ~ Relationship_Type*Orientation,
+              data = Experience)
+summary(model1)
+confint(model1)
+```
+
+```{r}
+model1.emm <- emmeans(model1, ~ Relationship_Type*Orientation)
+pairs(model1.emm)
+confint(pairs(model1.emm))
+eff_size(model1.emm, sigma = sigma(model1), edf = df.residual(model1))
+```
+
+## H3 - Engaging Emotions will be Expressed More in Communal vs. Transactional Relationships
+
+## H4 - In Communal Relationships, Engaging Emotions will be Expressed More than Disengaging Ones
+```{r}
+model2 <- glm(Frequency ~ Relationship_Type*Orientation,
+              data = Expression)
+summary(model2)
+confint(model2)
+```
+
+```{r}
+model2.emm <- emmeans(model2, ~ Relationship_Type*Orientation)
+pairs(model2.emm)
+confint(pairs(model2.emm))
+eff_size(model2.emm, sigma = sigma(model2), edf = df.residual(model2))
+```
+
+## H5 - Feelings of Connection will be Higher in Communal vs. Transactional Relationships
+```{r}
+model5 <- glm(Connection ~ Relationship_Type, data = Expression)
+summary(model5)
+confint(model5)
+cohensD(Connection ~ Relationship_Type, data = Expression)
+```
+
+## H6 - Feelings of Connection will be Higher for Engaging vs. Disengaging Emotions
+```{r}
+model6 <- glm(Connection ~ Orientation, data = Expression)
+summary(model6)
+confint(model6)
+cohensD(Connection ~ Orientation, data = Expression)
+```
+
+## H7 - Feelings of Connection will be Positively Related to Frequency of Expression in Communal (but not Transactional) Relationships
+```{r}
+model4 <- glm(Frequency ~ Relationship_Type*Connection,
+              data = Expression)
+summary(model4)
+confint(model4)
+simple_slopes(model4)
+
+# Define the estimates and standard errors for the two simple slopes (Communal and Transactional)
+communal_slope <- 0.5230
+communal_se <- 0.0144
+
+transactional_slope <- 0.3794
+transactional_se <- 0.0187
+
+# Degrees of freedom (df) based on model output (4553)
+df <- 4553
+
+# Calculate the critical t-value for 95% CI
+alpha <- 0.05
+t_value <- qt(1 - alpha / 2, df)
+
+# Manually calculate the confidence intervals
+communal_ci_lower <- communal_slope - t_value * communal_se
+communal_ci_upper <- communal_slope + t_value * communal_se
+
+transactional_ci_lower <- transactional_slope - t_value * transactional_se
+transactional_ci_upper <- transactional_slope + t_value * transactional_se
+
+# Display results
+cat("Communal Slope CI: [", communal_ci_lower, ",", communal_ci_upper, "]\n")
+cat("Transactional Slope CI: [", transactional_ci_lower, ",", transactional_ci_upper, "]\n")
+```

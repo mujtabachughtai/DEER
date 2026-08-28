@@ -1,0 +1,329 @@
+---
+title: "Study 3 Exploratory Analyses"
+author: "Muji Chughtai"
+date: '`r Sys.Date()`'
+output: pdf_document
+---
+
+# Load in Required Packages and Data
+```{r}
+library(tidyverse)
+library(here)
+library(svglite)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(lsr)
+library(apaTables)
+
+study3 <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study3_AnalysisData.csv")
+)
+Experience <- study3 %>%
+  filter(Exp_Type == "Experience")
+Expression <- study3 %>%
+  filter(Exp_Type == "Expression")
+```
+
+# Willingness
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(Hyp_Recall == "Recall") %>%
+  filter(!is.na(Willing)) %>%
+  summarise(Min = min(Willing),
+            Q1 = quantile(Willing, 0.25),
+            Mean = mean(Willing),
+            Median = median(Willing),
+            Q3 = quantile(Willing, 0.75),
+            Max = max(Willing),
+            IQR = IQR(Willing),
+            SD = sd(Willing),
+            N = n())
+```
+
+```{r}
+Expression %>%
+  filter(Hyp_Recall == "Recall") %>%
+  ggplot(aes(x = Willing)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Willingness to Express", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Frequency ~ Relationship_Type*Emotion, data = subset(Expression, Hyp_Recall == "Recall"))
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Willingness to Express",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Residuals_Willing.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Checking Random Effects of Participants
+```{r}
+model <- lmer(Willing ~ 1 + (1|PID), data = subset(Expression, Hyp_Recall == "Recall"))
+summary(model)
+
+ICC <- 0.178 / (0.178 + 1.454);ICC
+```
+
+# Testing Preregistered Exploratory Hypotheses
+
+## H1 - Willingness to Express will be Higher in Communal Relationships
+```{r}
+model1 <- glm(Willing ~ Relationship_Type, data = subset(Expression, Hyp_Recall == "Recall"))
+summary(model1)
+confint(model1)
+cohensD(Affirming ~ Relationship_Type, data = subset(Expression, Hyp_Recall == "Recall"))
+```
+
+```{r}
+x = Expression %>%
+  filter(!is.na(Willing)) %>%
+  filter(Hyp_Recall == "Recall") %>%
+  ggplot(aes(x = factor(Relationship_Type, levels = c("Communal", "Transactional")),
+             fill = factor(Emotion, levels = c("Love", "Joy", "Sadness", "Hurt")),
+             y = Willing)) +
+    scale_fill_manual(values = c("Love" = "#E57373", "Joy" = "#FFCA28",  
+                               "Sadness" = "#64B5F6", "Hurt" = "#AF7AC5")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Rating",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(-2, 2)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Willing.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+## H2 - Hypothetical Connection will be Less than Recalled Connection
+```{r}
+model2 <- glm(Connection ~ Hyp_Recall, data = Expression)
+summary(model2)
+confint(model2)
+cohensD(Connection ~ Hyp_Recall, data = Expression)
+```
+
+```{r}
+Expression %>%
+  group_by(Hyp_Recall) %>%
+  summarize(
+    t_test = list(t.test(Connection, mu = 0)),
+    estimate = t_test[[1]]$estimate,
+    statistic = t_test[[1]]$statistic,
+    p_value = t_test[[1]]$p.value,
+    conf_int_low = t_test[[1]]$conf.int[1],
+    conf_int_high = t_test[[1]]$conf.int[2],
+    df = t_test[[1]]$parameter,
+    effect_size = as.numeric(cohensD(Connection, mu = 0))
+  ) %>%
+  ungroup()
+```
+
+## H3 - Hypothetical Drawing Close will be Less than Recalled Drawing Close
+```{r}
+model3 <- glm(DrawClose ~ Hyp_Recall, data = Expression)
+summary(model3)
+confint(model3)
+cohensD(DrawClose ~ Hyp_Recall, data = Expression)
+```
+
+```{r}
+Expression %>%
+  group_by(Hyp_Recall) %>%
+  summarize(
+    t_test = list(t.test(DrawClose, mu = 0)),
+    estimate = t_test[[1]]$estimate,
+    statistic = t_test[[1]]$statistic,
+    p_value = t_test[[1]]$p.value,
+    conf_int_low = t_test[[1]]$conf.int[1],
+    conf_int_high = t_test[[1]]$conf.int[2],
+    df = t_test[[1]]$parameter,
+    effect_size = as.numeric(cohensD(DrawClose, mu = 0))
+  ) %>%
+  ungroup()
+```
+
+## H4 - Hypothetical Affirming will be Less than Recalled Affirming
+```{r}
+model4 <- glm(Affirming ~ Hyp_Recall, data = Expression)
+summary(model4)
+confint(model4)
+cohensD(Affirming ~ Hyp_Recall, data = Expression)
+```
+
+```{r}
+Expression %>%
+  group_by(Hyp_Recall) %>%
+  summarize(
+    t_test = list(t.test(Affirming, mu = 0)),
+    estimate = t_test[[1]]$estimate,
+    statistic = t_test[[1]]$statistic,
+    p_value = t_test[[1]]$p.value,
+    conf_int_low = t_test[[1]]$conf.int[1],
+    conf_int_high = t_test[[1]]$conf.int[2],
+    df = t_test[[1]]$parameter,
+    effect_size = as.numeric(cohensD(Affirming, mu = 0))
+  ) %>%
+  ungroup()
+```
+
+# Checking If Effect of Relationship Type on DVs is Moderated by Hyp/Recall
+```{r}
+Expression %>%
+  filter(!is.na(Connection)) %>%
+  group_by(Relationship_Type) %>%
+  summarise(Recall = mean(Hyp_Recall == "Recall"),
+            Hyp = mean(Hyp_Recall == "Hyp"))
+```
+
+```{r}
+bin.model <- glm(as.factor(Hyp_Recall) ~ Relationship_Type,
+               family = binomial, data = subset(Expression, !is.na(Connection)))
+
+summary(bin.model)
+confint(bin.model)
+
+exp(coef(bin.model))
+exp(confint(bin.model))
+```
+
+## Connection
+```{r}
+model5 <- glm(Connection ~ Relationship_Type * Hyp_Recall, data = subset(Expression, !is.na(Connection)))
+summary(model5)
+confint(model5)
+```
+
+## Draw Close
+```{r}
+model6 <- glm(DrawClose ~ Relationship_Type * Hyp_Recall, data = subset(Expression, !is.na(DrawClose)))
+summary(model6)
+confint(model6)
+```
+
+## Affirm
+```{r}
+model7 <- glm(Affirming ~ Relationship_Type*Hyp_Recall, data = subset(Expression, !is.na(Affirming)))
+summary(model7)
+confint(model7)
+```
+
+# Individual Emotion and Relationship Type
+
+## Experience
+```{r}
+model8 <- glm(Frequency ~ Relationship_Type*Emotion,
+              data = subset(Experience, Hyp_Recall == "Recall"))
+summary(model8)
+```
+
+```{r}
+model8.emm <- emmeans(model8, ~ Relationship_Type*Emotion)
+pairs(model8.emm)
+confint(pairs(model8.emm))
+eff_size(model8.emm, sigma = sigma(model8), edf = df.residual(model8))
+```
+
+## Expression
+```{r}
+model9 <- glm(Frequency ~ Relationship_Type*Emotion,
+              data = subset(Expression, Hyp_Recall == "Recall"))
+summary(model9)
+```
+
+```{r}
+model9.emm <- emmeans(model9, ~ Relationship_Type*Emotion)
+pairs(model9.emm)
+confint(pairs(model9.emm))
+eff_size(model9.emm, sigma = sigma(model9), edf = df.residual(model9))
+```
+
+# Full Descriptive Statistics
+```{r}
+# Experience
+Experience.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = Frequency,
+  data = subset(Experience, Hyp_Recall == "Recall")
+)
+
+# Expression
+Expression.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = Frequency,
+  data = subset(Expression, Hyp_Recall == "Recall")
+)
+
+# Connection
+Connection.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = Connection,
+  data = Expression
+)
+
+# Affirming
+Affirm.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = Affirming,
+  data = Expression
+)
+
+# Draw Close
+DrawClose.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = DrawClose,
+  data = Expression
+)
+
+# Willingness
+Willingness.desc <- apa.2way.table(
+  iv1 = Relationship_Type,
+  iv2 = Emotion, 
+  dv = Willing,
+  data = subset(Expression, Hyp_Recall == "Recall")
+)
+
+Experience.desc
+Expression.desc
+Connection.desc
+Affirm.desc
+DrawClose.desc
+Willingness.desc
+```

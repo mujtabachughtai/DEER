@@ -1,0 +1,521 @@
+---
+title: "Study 3 Primary Analyses"
+author: "Muji Chughtai"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# Load in Required Packages and Data
+```{r}
+library(tidyverse)
+library(here)
+library(svglite)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(lsr)
+
+study3 <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study3_AnalysisData.csv")
+)
+
+Experience <- study3 %>%
+  filter(Exp_Type == "Experience")
+Expression <- study3 %>%
+  filter(Exp_Type == "Expression")
+```
+
+# Demographics
+
+## Race
+```{r}
+individuals <- study3 %>%
+  distinct(PID, .keep_all = TRUE)
+
+individuals %>%
+  mutate(Race = if_else(grepl(",", Race), "10", Race)) %>%
+  group_by(Race) %>%
+  summarise(
+    N = n(),
+    Proportion = N / nrow(individuals)
+  ) %>%
+  arrange(desc(N))
+```
+
+## Age
+```{r}
+individuals %>%
+  filter(!is.na(Age_4_TEXT)) %>%
+  summarise(Min = min(Age_4_TEXT),
+            Q1 = quantile(Age_4_TEXT, 0.25),
+            Mean = mean(Age_4_TEXT),
+            Median = median(Age_4_TEXT),
+            Q3 = quantile(Age_4_TEXT, 0.75),
+            Max = max(Age_4_TEXT),
+            IQR = IQR(Age_4_TEXT),
+            SD = sd(Age_4_TEXT),
+            N = n())
+```
+
+## Gender
+```{r}
+individuals %>%
+  group_by(Gender) %>%
+  summarise(
+    N = n(),
+    Proportion = N / nrow(individuals)) %>%
+  arrange(desc(N))
+```
+
+# Experience
+
+## Distributions and Summary Statistics
+```{r}
+Experience %>%
+  filter(Hyp_Recall == "Recall") %>%
+  filter(!is.na(Frequency)) %>%
+  summarise(Min = min(Frequency),
+            Q1 = quantile(Frequency, 0.25),
+            Mean = mean(Frequency),
+            Median = median(Frequency),
+            Q3 = quantile(Frequency, 0.75),
+            Max = max(Frequency),
+            IQR = IQR(Frequency),
+            SD = sd(Frequency),
+            N = n())
+```
+
+```{r}
+Experience %>%
+  filter(Hyp_Recall == "Recall") %>%
+  ggplot(aes(x = Frequency)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Frequency of Experience", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Frequency ~ Relationship_Type*Emotion, data = subset(Experience, Hyp_Recall == "Recall"))
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Frequency of Experience",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Residuals_Experience.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Expression
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(Hyp_Recall == "Recall") %>%
+  filter(!is.na(Frequency)) %>%
+  summarise(Min = min(Frequency),
+            Q1 = quantile(Frequency, 0.25),
+            Mean = mean(Frequency),
+            Median = median(Frequency),
+            Q3 = quantile(Frequency, 0.75),
+            Max = max(Frequency),
+            IQR = IQR(Frequency),
+            SD = sd(Frequency),
+            N = n())
+```
+
+```{r}
+Expression %>%
+  filter(Hyp_Recall == "Recall") %>%
+  ggplot(aes(x = Frequency)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Frequency of Expression", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Frequency ~ Relationship_Type*Emotion, data = subset(Expression, Hyp_Recall == "Recall"))
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Frequency of Expression",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Residuals_Expression.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Connection
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(!is.na(Connection)) %>%
+  summarise(Min = min(Connection),
+            Q1 = quantile(Connection, 0.25),
+            Mean = mean(Connection),
+            Median = median(Connection),
+            Q3 = quantile(Connection, 0.75),
+            Max = max(Connection),
+            IQR = IQR(Connection),
+            SD = sd(Connection),
+            N = n())
+```
+
+```{r}
+Expression %>%
+  ggplot(aes(x = Connection)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Feelings of Connection when Expressing", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Connection ~ Relationship_Type*Emotion, data = Expression)
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Feelings of Connection",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Residuals_Connection.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Affirm or Undermine
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(!is.na(Affirming)) %>%
+  summarise(Min = min(Affirming),
+            Q1 = quantile(Affirming, 0.25),
+            Mean = mean(Affirming),
+            Median = median(Affirming),
+            Q3 = quantile(Affirming, 0.75),
+            Max = max(Affirming),
+            IQR = IQR(Affirming),
+            SD = sd(Affirming),
+            N = n())
+```
+
+```{r}
+Expression %>%
+  ggplot(aes(x = Affirming)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Does Expressing Affirm or Undermine", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Affirming ~ Relationship_Type*Emotion, data = Expression)
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Expression as Relationship Affirming or Undermining", x = "Frequency",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Residuals_Affirm.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Draw Close or Distance
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(!is.na(DrawClose)) %>%
+  summarise(Min = min(DrawClose),
+            Q1 = quantile(DrawClose, 0.25),
+            Mean = mean(DrawClose),
+            Median = median(DrawClose),
+            Q3 = quantile(DrawClose, 0.75),
+            Max = max(DrawClose),
+            IQR = IQR(DrawClose),
+            SD = sd(DrawClose),
+            N = n())
+```
+
+```{r}
+Expression %>%
+  ggplot(aes(x = DrawClose)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Does Expressing Draw Close or Distance", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(DrawClose ~ Relationship_Type*Emotion, data = Expression)
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Extent to Which Expression Draws Close or Distances",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Residuals_DrawClose.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Checking Random Effects of Participant
+
+## Experience
+```{r}
+model <- lmer(Frequency ~ 1 + (1|PID), data = Experience)
+summary(model)
+
+ICC <- 0.205 / (0.205 + 1.425);ICC
+```
+
+## Expression
+```{r}
+model <- lmer(Frequency ~ 1 + (1|PID), data = Expression)
+summary(model)
+
+ICC <- 0.242 / (0.242 + 1.542);ICC
+```
+
+## Connection
+```{r}
+model <- lmer(Connection ~ 1 + (1|PID), data = Expression)
+summary(model)
+
+ICC <- 0.1211 / (0.1211 + 0.9180);ICC
+```
+
+## Affirm or Undermine
+```{r}
+model <- lmer(Affirming ~ 1 + (1|PID), data = Expression)
+summary(model)
+
+ICC <- 0.09843 / (0.09843 + 0.98751);ICC
+```
+
+## Draw Close or Distance
+```{r}
+model <- lmer(DrawClose ~ 1 + (1|PID), data = Expression)
+summary(model)
+
+ICC <- 0.1188 / (0.1188 + 0.9644);ICC
+```
+
+# Testing Preregistered Primary Hypotheses
+
+## H1 - Experience will be Higher in Communal Relationships
+```{r}
+model1 <- glm(Frequency ~ Relationship_Type, data = subset(Experience, Hyp_Recall == "Recall"))
+summary(model1)
+confint(model1)
+cohensD(Frequency ~ Relationship_Type, data = subset(Experience, Hyp_Recall == "Recall"))
+```
+
+## H2 - Expression will be Higher in Communal Relationships
+```{r}
+model2 <- glm(Frequency ~ Relationship_Type, data = subset(Expression, Hyp_Recall == "Recall"))
+summary(model2)
+confint(model2)
+cohensD(Frequency ~ Relationship_Type, data = subset(Expression, Hyp_Recall == "Recall"))
+```
+
+## H3 - Connection will be Higher in Communal Relationships
+```{r}
+model3 <- glm(Connection ~ Relationship_Type, data = Expression)
+summary(model3)
+confint(model3)
+cohensD(Connection ~ Relationship_Type, data = Expression)
+```
+
+```{r}
+x <- Expression %>%
+  filter(!is.na(Connection)) %>%
+  ggplot(aes(x = factor(Relationship_Type, levels = c("Communal", "Transactional")),
+             fill = factor(Emotion, levels = c("Love", "Joy", "Sadness", "Hurt")),
+             y = Connection)) +
+    scale_fill_manual(values = c("Love" = "#E57373", "Joy" = "#FFCA28",  
+                               "Sadness" = "#64B5F6", "Hurt" = "#AF7AC5")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Rating",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(-2, 2)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Connection.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+## H4 - Expression will be Relationship-Affirming in Communal Relationships
+```{r}
+model4 <- glm(Affirming ~ Relationship_Type, data = Expression)
+summary(model4)
+confint(model4)
+cohensD(Affirming ~ Relationship_Type, data = Expression)
+```
+
+```{r}
+Expression %>%
+  group_by(Relationship_Type) %>%
+  summarize(
+    t_test = list(t.test(Affirming, mu = 0)),
+    estimate = t_test[[1]]$estimate,
+    statistic = t_test[[1]]$statistic,
+    p_value = t_test[[1]]$p.value,
+    conf_int_low = t_test[[1]]$conf.int[1],
+    conf_int_high = t_test[[1]]$conf.int[2],
+    df = t_test[[1]]$parameter,
+    effect_size = as.numeric(cohensD(Affirming, mu = 0))
+  ) %>%
+  ungroup()
+```
+
+```{r}
+x <- Expression %>%
+  filter(!is.na(Affirming)) %>%
+  ggplot(aes(x = factor(Relationship_Type, levels = c("Communal", "Transactional")),
+             fill = factor(Emotion, levels = c("Love", "Joy", "Sadness", "Hurt")),
+             y = Affirming)) +
+    scale_fill_manual(values = c("Love" = "#E57373", "Joy" = "#FFCA28",  
+                               "Sadness" = "#64B5F6", "Hurt" = "#AF7AC5")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Rating",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(-2, 2)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+
+ggsave(
+  here("Figures", "Study 3", "Study3_Affirm.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+## H5 - Expression will Draw Closer in Communal Relationships
+```{r}
+model5 <- glm(DrawClose ~ Relationship_Type, data = Expression)
+summary(model5)
+confint(model5)
+cohensD(DrawClose ~ Relationship_Type, data = Expression)
+```
+
+```{r}
+Expression %>%
+  group_by(Relationship_Type) %>%
+  summarize(
+    t_test = list(t.test(DrawClose, mu = 0)),
+    estimate = t_test[[1]]$estimate,
+    statistic = t_test[[1]]$statistic,
+    p_value = t_test[[1]]$p.value,
+    conf_int_low = t_test[[1]]$conf.int[1],
+    conf_int_high = t_test[[1]]$conf.int[2],
+    df = t_test[[1]]$parameter,
+    effect_size = as.numeric(cohensD(DrawClose, mu = 0))
+  ) %>%
+  ungroup()
+```
+
+```{r}
+x <- Expression %>%
+  filter(!is.na(DrawClose)) %>%
+  ggplot(aes(x = factor(Relationship_Type, levels = c("Communal", "Transactional")),
+             fill = factor(Emotion, levels = c("Love", "Joy", "Sadness", "Hurt")),
+             y = DrawClose)) +
+    scale_fill_manual(values = c("Love" = "#E57373", "Joy" = "#FFCA28",  
+                               "Sadness" = "#64B5F6", "Hurt" = "#AF7AC5")) +
+  stat_summary(fun = "mean", geom = "col", color = "black", position = "dodge") +
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               position = position_dodge(0.9), width = 0.25) +
+  labs(title = "",
+       x = "Relationship Type",
+       y = "Rating",
+       fill = "Emotion") +
+    coord_cartesian(ylim = c(-2, 2)) + 
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom", 
+        strip.text = element_text(size=14),
+        axis.text = element_text(size=14),
+        axis.title.y = element_text(size=14, vjust=0.35),
+        axis.title.x = element_text(size=16),
+        legend.title = element_text(size=16),
+        legend.text = element_text(size=14),
+        text = element_text(family = "Helvetica")
+    )
+
+ggsave(
+  here("Figures", "Study 3", "Study3_DrawClose.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```

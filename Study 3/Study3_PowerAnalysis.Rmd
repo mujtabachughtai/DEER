@@ -1,0 +1,40 @@
+---
+title: "Study 3 Power Analysis"
+author: "Muji Chughtai"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+We are using the Sjstats package: https://strengejacke.github.io/sjstats/reference/samplesize_mixed.html
+
+# Load in Required Packages and Data
+```{r}
+library(sjstats)
+library(pwr)
+```
+
+## Effect Size of 0.3
+```{r}
+samplesize_mixed(
+  eff.size = 0.3,
+  df.n = NULL,
+  power = 0.8,
+  sig.level = 0.05,
+  k = 2, # Number of cluster groups (level-2-unit) in multilevel-design
+  n = 2 # Optional, number of observations per cluster groups (level-2-unit)
+  # in multilevel-design
+)
+```
+
+## Effect Size of 0.5
+```{r}
+samplesize_mixed(
+  eff.size = 0.5,
+  df.n = NULL,
+  power = 0.8,
+  sig.level = 0.05,
+  k = 2, # Number of cluster groups (level-2-unit) in multilevel-design
+  n = 2 # Optional, number of observations per cluster groups (level-2-unit)
+  # in multilevel-design
+)
+```

@@ -1,0 +1,313 @@
+---
+title: "Study 2 Primary Analyses"
+author: "Muji Chughtai"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# Load in Required Packages and Data
+```{r}
+library(tidyverse)
+library(here)
+library(svglite)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(lsr)
+
+study2 <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study2_AnalysisData.csv")
+)
+Experience <- study2 %>%
+  filter(Type == "Experience")
+Expression <- study2 %>%
+  filter(Type == "Expression")
+```
+
+# Demographics
+
+## Race/Ethnicity
+```{r}
+individuals <- study2 %>%
+  distinct(PID, .keep_all = TRUE)
+
+individuals %>%
+  mutate(Race = if_else(grepl(",", Race), "10", Race)) %>%
+  group_by(Race) %>%
+  summarise(
+    N = n(),
+    Proportion = N / nrow(individuals)
+  ) %>%
+  arrange(desc(N))
+```
+
+## Age
+```{r}
+individuals %>%
+  filter(!is.na(Age_4_TEXT)) %>%
+  summarise(Min = min(Age_4_TEXT),
+            Q1 = quantile(Age_4_TEXT, 0.25),
+            Mean = mean(Age_4_TEXT),
+            Median = median(Age_4_TEXT),
+            Q3 = quantile(Age_4_TEXT, 0.75),
+            Max = max(Age_4_TEXT),
+            IQR = IQR(Age_4_TEXT),
+            SD = sd(Age_4_TEXT),
+            N = n())
+```
+
+## Gender
+```{r}
+individuals %>%
+  group_by(Gender) %>%
+  summarise(
+    N = n(),
+    Proportion = N / nrow(individuals)) %>%
+  arrange(desc(N))
+```
+
+# Perceieved Experience
+
+## Distributions and Summary Statistics
+```{r}
+Experience %>%
+  filter(!is.na(Frequency)) %>%
+  summarise(Min = min(Frequency),
+            Q1 = quantile(Frequency, 0.25),
+            Mean = mean(Frequency),
+            Median = median(Frequency),
+            Q3 = quantile(Frequency, 0.75),
+            Max = max(Frequency),
+            IQR = IQR(Frequency),
+            SD = sd(Frequency),
+            N = n())
+```
+
+```{r}
+Experience %>%
+  ggplot(aes(x = Frequency)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Frequency of Perceived Experience", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Frequency ~ Relationship_Type*Emotion, data = Experience)
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Frequency of Perceived Experience",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 2", "Study2_Residuals_Experience.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Perceived Expression
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(!is.na(Frequency)) %>%
+  summarise(Min = min(Frequency),
+            Q1 = quantile(Frequency, 0.25),
+            Mean = mean(Frequency),
+            Median = median(Frequency),
+            Q3 = quantile(Frequency, 0.75),
+            Max = max(Frequency),
+            IQR = IQR(Frequency),
+            SD = sd(Frequency),
+            N = n())
+```
+
+```{r}
+Expression %>%
+  ggplot(aes(x = Frequency)) +
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins = 5, fill = "#228B22", color = "black", ) +
+  labs(title = "Frequency of Perceived Expression", x = "Frequency",
+       y = "Percentage") + theme_minimal()
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Frequency ~ Relationship_Type*Emotion, data = Expression)
+
+x <- ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Frequency of Perceived Expression",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 2", "Study2_Residuals_Expression.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+```
+
+# Connection
+
+## Distributions and Summary Statistics
+```{r}
+Expression %>%
+  filter(!is.na(Connection)) %>%
+  summarise(Min = min(Connection),
+            Q1 = quantile(Connection, 0.25),
+            Mean = mean(Connection),
+            Q3 = quantile(Connection, 0.75),
+            Max = max(Connection),
+            IQR = IQR(Connection),
+            SD = sd(Connection),
+            N = n())
+```
+
+## Checking Normality of Residuals for the Full Model
+```{r}
+full.model <- glm(Connection ~ Relationship_Type*Emotion, data = Expression)
+
+ggplot() +
+  stat_qq(aes(sample = residuals(full.model)), distribution = qnorm) +
+  stat_qq_line(aes(sample = residuals(full.model)), distribution = qnorm) +
+  ggtitle("Q-Q Plot") +
+  labs(title = "Residuals for Feelings of Connection when Perceiving",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") + theme_minimal()
+
+ggsave(
+  here("Figures", "Study 2", "Study2_Residuals_Connection.svg"),
+  x,
+  width = 8,
+  height = 6
+)
+
+```
+
+# Checking Random Effects of Participant
+
+## Experience
+```{r}
+model <- lmer(Frequency ~ 1 + (1|PID), data = Experience)
+summary(model)
+
+ICC <- 0.04001 / (0.04001 + 1.30988);ICC
+```
+
+## Expression
+```{r}
+model <- lmer(Frequency ~ 1 + (1|PID), data = Expression)
+summary(model)
+
+ICC <- 0.03281 / (0.03281 + 1.34244);ICC
+```
+
+## Connection
+```{r}
+model <- lmer(Connection ~ 1 + (1|PID), data = Expression)
+summary(model)
+
+ICC <- 0.09276 / (0.09276 + 1.23911);ICC
+```
+
+# Testing Preregistered Primary Hypotheses
+
+## H1 - Emotion Expression will be Perceived More in Communal vs. Transactional Relationships
+```{r}
+model1 <- glm(Frequency ~ Relationship_Type, data = Expression)
+summary(model1)
+confint(model1)
+cohensD(Frequency ~ Relationship_Type, data = Expression)
+```
+
+## H2 - Emotion Experience will be Perceived More in Communal vs. Transactional Relationships
+```{r}
+model2 <- glm(Frequency ~ Relationship_Type, data = Experience)
+summary(model2)
+confint(model2)
+cohensD(Frequency ~ Relationship_Type, data = Experience)
+```
+
+## H3 - Experience will be Higher than Expression, Especially for Transactional Relationships and Disengaging Emotions
+```{r}
+model3a <- glm(Frequency ~ Type, data = study2)
+summary(model3a)
+confint(model3a)
+cohensD(Frequency ~ Type, data = study2)
+```
+
+```{r}
+model3b <- glm(Frequency ~ Type*Relationship_Type, data = study2)
+summary(model3b)
+confint(model3b)
+```
+
+```{r}
+model3b.emm <- emmeans(model3b, ~ Type*Relationship_Type)
+pairs(model3b.emm)
+confint(pairs(model3b.emm))
+eff_size(model3b.emm, sigma = sigma(model3b), edf = df.residual(model3b))
+```
+
+```{r}
+model3c <- glm(Frequency ~ Type*Orientation, data = study2)
+summary(model3c)
+confint(model3c)
+```
+
+```{r}
+model3c.emm <- emmeans(model3c, ~ Type*Orientation)
+pairs(model3c.emm)
+confint(pairs(model3c.emm))
+eff_size(model3c.emm, sigma = sigma(model3c), edf = df.residual(model3c))
+```
+
+## H4 - Connection will be Higher in Communal vs. Transactional Relationships
+```{r}
+model4 <- glm(Connection ~ Relationship_Type, data = Expression)
+summary(model4)
+confint(model4)
+cohensD(Connection ~ Relationship_Type, data = Expression)
+```
+
+## H5 - Connection will be Higher for Engaging vs Disengaging Emotions
+```{r}
+model5 <- glm(Connection ~ Orientation, data = Expression)
+summary(model5)
+confint(model5)
+cohensD(Connection ~ Orientation, data = Expression)
+```
+
+## H6 - Participants will Feel more Connected when Expressing Versus Perceiving
+```{r}
+study1_comp <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study1_ComparisonData.csv")
+)
+study2_comp <- read.csv(
+  here("Data", "Analysis-Ready Data", "Study2_ComparisonData.csv")
+)
+
+study1_comp <- study1_comp %>%
+  filter(Type == "Expression")
+
+study2_comp <- study2_comp %>%
+  filter(Type == "Expression")
+
+comp_data <- rbind(study1_comp, study2_comp)
+```
+
+```{r}
+model6 <- glm(Connection ~ PE, data = comp_data)
+summary(model6)
+confint(model6)
+cohensD(Connection ~ PE, data = comp_data)
+```
