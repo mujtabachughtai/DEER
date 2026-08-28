@@ -20,5 +20,5 @@ Different parts of this repository carry different terms:
 
 ## Contact
 
-Mujtaba K. Chughtai — muji.chughtai@yale.edu
+Mujtaba (Muji) K. Chughtai — muji.chughtai@yale.edu
 Department of Psychology, Yale University
